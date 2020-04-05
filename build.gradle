@@ -1,0 +1,156 @@
+//https://www.youtube.com/watch?v=fHhf1xG0pIA
+//https://stackoverflow.com/questions/8120949/what-does-delegate-mean-in-groovy
+//https://www.youtube.com/watch?v=9S4AgFZsxcQ (Listen at 26.55..explanation of how delegates work inside Gradle)
+
+//Flavours of variable definition
+println 'hello'
+
+String staticallyTypedStr = 'staticallyTypedStr'
+println staticallyTypedStr
+
+def dynamivallyTypedStr = 'dynamivallyTypedStr'
+println dynamivallyTypedStr
+
+def noTypeStr = 'noTypeStr'
+println noTypeStr
+
+/****String interpolation when using the "" ***/
+println "hello $noTypeStr"
+
+/**********class example************/
+class Test {
+   String str;
+}
+
+Test test = new Test();
+test.str = "string"
+println test.str;
+
+/******The above access looks like code access the member vars****/
+/****But in reallity its getter/setter***/
+test.setStr ("testing")
+println test.getStr()
+
+test.setStr "testing"
+println test.getStr() /**Need () in front of getStr, otherwise test.getStr will look for variable getSTr in test class***/
+
+/*****overridding the default getter***/
+class Test1 {
+   String str;
+   String getStr() {
+     return "Overrideen getter"
+   }
+}
+
+Test1 test1 = new Test1();
+test1.str = "cool"
+println test1.str
+
+/*******Closure *****/
+int square (int num) {
+    return num*num
+}
+println square (5)
+
+/* Convert the function to closure**/
+Closure square = { int num -> return num*num }
+println square (5)
+
+def cube = { def num -> return num*num*num }
+println cube(3)
+
+/***Normally this will work for groovy but not with gradle **/
+quad = {num -> num*num*num*num}
+println quad(2)
+
+
+/******Scope**/
+// Normal method can access the vars defined inside the method, but clossure can access the scope of the parent
+// But below both are able to access test1.str
+String method() {
+   return test1.str
+}
+
+Closure closure = { println test1.str } //or def closure = { println test1.str }
+
+//println method() //will give error if enabled in groovy because method does not have access to test1
+println closure
+
+// example of closure delegates
+// using normal classes
+class GroovyGreeter {
+    String greeting = "Default greeting"
+    def printGreeting(){println "Greeting: $greeting"}
+}
+
+def myGroovyGreeter = new GroovyGreeter()
+
+myGroovyGreeter.printGreeting()
+myGroovyGreeter.greeting = "My custom greeting"
+myGroovyGreeter.printGreeting()
+
+//Closures can have a delegate object
+//Any variables or methods referenced in the closure that don't have a
+//local definition are then evaluated against the closure's delegate. Let's make
+//a closure that will access the property and method of our GroovyGreeter class.
+
+def greetingClosure = {
+    greeting = "Setting the greeting from a closure"
+    printGreeting()
+}
+
+//greetingClosure() // This doesn't work, because `printGreeting` isn't defined
+greetingClosure.delegate = myGroovyGreeter
+greetingClosure() // This WORKS, because `printGreeting` is defined because of myGroovyGreeter
+
+//Pass closure as argument to function
+def method(Closure closure) {
+    closure()
+}
+
+method(greetingClosure)
+method greetingClosure
+method({println "call closure as arg"})
+method {println "call closure as arg"}
+
+//Not sure why 1 does not work and 2 does work 
+//1
+//method() greetingClosure
+//2
+method() {println "call closure as arg"}
+
+//testing how differnt ways the functions call be called
+def val = square(10)
+def val1 = square 11
+//def val2 = square() 12 //This doe sot work
+
+
+
+
+
+//Every Groovy script is binded with an object. Its like this object in a script.
+//A normal script is binded with a map object. A build.gradle script isbinded with the Project object
+
+//Corelate above learning to gradle file syntax:
+apply plugin:'java' // apply is part of GRADLE and build.gradle is passed Project object and apply belong to Project
+//apply([plugin:'java'])
+//project.apply([plugin:'java'])
+
+
+//Very Important: How to read the gradle documentation
+//Ex: repositories { } block at build.gradle script //https://docs.gradle.org/current/dsl/org.gradle.api.Project.html#org.gradle.api.Project:repositories(groovy.lang.Closure)
+//Documentation says:
+//Configures the repositories for this project. [Meaning: Say script has repositories { println "test"}. Configures the repositories for this project ==  Project.repositories( {println "test"} ) i.e curly braces is closure that is passed to Project.repositories function.
+//Documentation says:
+//This method executes the given closure against the RepositoryHandler for this project. [[THE MOST IMPORTANT CONCEPT TO UNDERSSTAND. See above example of closure and delegate, and see how greetingClosure.delegate = myGroovyGreeter above passes on the definition of printGreeting to the greetingClosure. And original closure does have the definition of printGreeting
+//Documentation says:
+//The RepositoryHandler is passed to the closure as the closure's delegate, i.e. (repositories closure).delegate = RepositoryHandler. So when you user defines closure for Project.repositories function, that closure can call methods defined inside the RepositoryHandler.
+//Any method that is not defined in the closure look for definition in RepositoryHandler because closure.delegate = RepositoryHandler.
+
+//Delegates to:
+//    RepositoryHandler from repositories
+
+
+///Another example:
+//buildscript {}
+//The ScriptHandler is passed to the closure and the closure's delegate. I.e closures.delegate = Scripthandler i.e closure can call the function defined inside the Scripthandler
